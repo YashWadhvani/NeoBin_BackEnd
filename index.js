@@ -8,6 +8,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { checkEnvVariables } = require("./utils/checkEnvVariables");
 const { userRoutes } = require("./routes/userRoutes");
+const { binRoutes } = require("./routes/binRoutes");
 
 dotenv.config();
 
@@ -32,8 +33,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(limiter);
 
 app.use("/api/v1/", userRoutes);
-
-console.log(userRoutes)
+app.use("/api/v1", binRoutes);
 
 mongoose
     .connect(process.env.MONGO_URI)
