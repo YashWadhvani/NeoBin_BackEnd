@@ -5,13 +5,13 @@ const User = require("../models/User");
 
 // Signup Controller
 const signup = async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) {
+  const { name, email, phone, password } = req.body;
+  if (!name || !email || !phone || !password) {
     return res.status(400).send("All fields are required");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const user = new User({ name, email, password: hashedPassword });
+  const user = new User({ name, email, phone, password: hashedPassword });
   await user.save();
   res.status(201).send("User created");
 };
@@ -57,7 +57,7 @@ const protectedRoute = async (req, res) => {
 
 // Update User Controller
 const updateUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
     if (!email || !password) {
       return res.status(400).send("Email and password are required");
     }
@@ -71,7 +71,7 @@ const updateUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = req.user.userId;
   
-    const update = { name, email, password: hashedPassword };
+    const update = { name, email, phone, password: hashedPassword };
     await User.updateOne({ _id: userId }, update);
     res.send("User updated");
   };
