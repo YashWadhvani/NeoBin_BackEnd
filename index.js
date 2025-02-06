@@ -12,46 +12,46 @@ const { binRoutes } = require("./routes/binRoutes");
 
 dotenv.config();
 
+// Check required environment variables
 checkEnvVariables();
-
-const PORT = process.env.PORT || 5000;
-
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: "Too many requests!",
-});
 
 const app = express();
 
+// Security, Logging, and Rate Limiting Middlewares
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per `window`
+    message: "Too many requests!",
+});
 app.use(limiter);
 
-app.use("/api/v1/", userRoutes);
+// Routes
+app.use("/api/v1", userRoutes);
 app.use("/api/v1", binRoutes);
 
+// MongoDB Connection
 mongoose
     .connect(process.env.MONGO_URI)
-    .then(() => console.log("Connected to MongoDB"))
-    .catch((err) => console.log("Error Occured in connection:", err));
+    .then(() => console.log("✅ Connected to MongoDB"))
+    .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
+// Root route
 app.get("/", (req, res) => {
-    res.send("Backend is running!");
+    res.send("🚀 Backend is running on Vercel!");
 });
 
+// List Database Collections
 app.get("/collections", async (req, res) => {
     try {
-        const collections = await mongoose.connection.db
-            .listCollections()
-            .toArray();
-        const collectionNames = collections.map(
-            (collection) => collection.name
-        ); // Extract collection names
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const collectionNames = collections.map((collection) => collection.name);
         res.json({ collections: collectionNames });
     } catch (error) {
         console.error("Error listing collections:", error);
@@ -59,36 +59,33 @@ app.get("/collections", async (req, res) => {
     }
 });
 
-// Database Health Check endpoint
+// Database Health Check
 app.get("/health", async (req, res) => {
     try {
-        const status = await mongoose.connection.readyState;
-        if (status === 1) {
-            res.status(200).json({ message: "Database is connected" });
-        } else {
-            res.status(500).json({ message: "Database is not connected" });
-        }
+        const status = mongoose.connection.readyState;
+        res.status(status === 1 ? 200 : 500).json({
+            message: status === 1 ? "✅ Database is connected" : "❌ Database is not connected",
+        });
     } catch (error) {
         res.status(500).json({ message: "Error checking database status" });
     }
 });
 
-// Global Error Handling middleware
+// Global Error Handling Middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    console.error("❌ Error:", err.stack);
     res.status(500).json({ error: "Something went wrong!" });
 });
 
-// Graceful shutdown
+// Graceful Shutdown
 const shutdown = () => {
     mongoose.connection.close(() => {
-        console.log("Mongoose connection disconnected due to app termination");
+        console.log("🔴 MongoDB disconnected due to app termination");
         process.exit(0);
     });
 };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
+// Export for Vercel Deployment (❌ NO `app.listen`)
+module.exports = app;
