@@ -4,15 +4,21 @@ const Bin = require("../models/Bin");
 
 const router = express.Router();
 
-// Helper: Group data by hour
+// Helper function: Group data by hour
 const groupByHour = (data) => {
-  return data.reduce((acc, item) => {
+  const grouped = {};
+  data.forEach((item) => {
     const hour = new Date(item.timestamp).getHours();
-    acc[hour] = acc[hour] || { hour, total: 0, count: 0 };
-    acc[hour].total += item.value;
-    acc[hour].count += 1;
-    return acc;
-  }, {});
+    if (!grouped[hour]) {
+      grouped[hour] = { hour, total: 0, count: 0 };
+    }
+    grouped[hour].total += item.value;
+    grouped[hour].count += 1;
+  });
+  return Object.values(grouped).map((h) => ({
+    hour: `${h.hour}:00`,
+    average: h.total / h.count,
+  }));
 };
 
 // Route to get all bins
@@ -34,26 +40,34 @@ router.get("/bins", async (req, res) => {
   }
 });
 
-// Route for Hourly Data
-router.get("/bin/:binId/hourly", async (req,res) => {
+// Route for Hourly Data (Weight, Distance, ADC Values)
+router.get("/bin/:binId/hourly", async (req, res) => {
   try {
-    const {binId} = req.params;
-    const bin = await Bin.findOne({binId});
+    const { binId } = req.params;
+    const bin = await Bin.findOne({ binId });
 
-    if (!bin) return res.status(400).json({error: "No Bin Found"});
+    if (!bin) return res.status(400).json({ error: "No Bin Found" });
 
     const last24Hrs = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const hourlyData = bin.distance.filter((d) => d.timestamp >= last24Hrs);
-    const groupedData = Object.values(groupByHour(hourlyData)).map((h) => ({
-      hour : `${h.hour}:00`,
-      average: h.total / h.count,
-    }));
 
-    res.json(groupedData)
+    // Filter data for the last 24 hours
+    const filteredDistance = bin.distance.filter((d) => new Date(d.timestamp) >= last24Hrs);
+    const filteredWeight = bin.weight.filter((d) => new Date(d.timestamp) >= last24Hrs);
+    const filteredADC = bin.adc_value.filter((d) => new Date(d.timestamp) >= last24Hrs);
 
+    // Process each attribute separately
+    const distanceData = groupByHour(filteredDistance);
+    const weightData = groupByHour(filteredWeight);
+    const adcData = groupByHour(filteredADC);
+
+    res.json({
+      distance: distanceData,
+      weight: weightData,
+      adc_value: adcData,
+    });
   } catch (error) {
-    res.status(500).json({error: error.message})
+    res.status(500).json({ error: error.message });
   }
-})
+});
 
 module.exports = {binRoutes: router};
