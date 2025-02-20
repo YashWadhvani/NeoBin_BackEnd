@@ -10,6 +10,7 @@ const binSchema = new mongoose.Schema({
   weight: [readingSchema],  // Stores weight readings over time
   gas_concentration: [readingSchema],  // Stores gas concentration readings
   distance: [readingSchema],  // Stores distance readings
+  adc_value: [readingSchema], // Stores adc values of Gaseous Concentration
   
   location: {
     latitude: { type: Number, required: true },

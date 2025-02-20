@@ -2,24 +2,10 @@
 const express = require("express");
 const Bin = require("../models/Bin");
 
-const router = express.Router();
+// Importing Aggregation functions
+const { getHourlyAvg, getDailyAvg, getMonthlyAvg } = require("../utils/dataAggregation");
 
-// Helper function: Group data by hour
-const groupByHour = (data) => {
-  const grouped = {};
-  data.forEach((item) => {
-    const hour = new Date(item.timestamp).getHours();
-    if (!grouped[hour]) {
-      grouped[hour] = { hour, total: 0, count: 0 };
-    }
-    grouped[hour].total += item.value;
-    grouped[hour].count += 1;
-  });
-  return Object.values(grouped).map((h) => ({
-    hour: `${h.hour}:00`,
-    average: h.total / h.count,
-  }));
-};
+const router = express.Router();
 
 // Route to get all bins
 router.get("/bins", async (req, res) => {
@@ -40,7 +26,58 @@ router.get("/bins", async (req, res) => {
   }
 });
 
-// Route for Hourly Data (Weight, Distance, ADC Values)
+// router.get("/bin/:binId/hourly", async (req, res) => {
+//   try {
+//     const { binId } = req.params;
+//     const bin = await Bin.findOne({ binId });
+//     console.log(bin)
+
+//     if (!bin) {
+//       return res.status(400).json({ error: "No Bin Found" });
+//     }
+
+//     // ✅ Check if distance, weight, and adc_value exist before using .filter()
+//     const last24Hrs = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+//     const getHourlyAvg = (data) => {
+//       if (!data || data.length === 0) return [];
+    
+//       // Convert timestamps properly
+//       const filteredData = data.filter((d) => new Date(d.timestamp).getTime() >= last24Hrs.getTime());
+//       console.log("Filtered Data:", filteredData);
+    
+//       if (filteredData.length === 0) return [];
+    
+//       const groupedData = filteredData.reduce((acc, item) => {
+//         const hour = new Date(item.timestamp).getHours();
+//         acc[hour] = acc[hour] || { hour, total: 0, count: 0 };
+//         acc[hour].total += parseFloat(item.value); // Ensure value is a number
+//         acc[hour].count += 1;
+//         return acc;
+//       }, {});
+    
+//       return Object.values(groupedData).map((h) => ({
+//         hour: `${h.hour}:00`,
+//         average: h.total / h.count,
+//       }));
+//     };
+    
+
+//     const result = {
+//       distance: getHourlyAvg(bin.distance),
+//       weight: getHourlyAvg(bin.weight),
+//       adc_value: getHourlyAvg(bin.adc_value),
+//     };
+
+//     res.json(result);
+//   } catch (error) {
+//     console.error("Error in hourly data:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+
+// Route: Hourly Aggregation
 router.get("/bin/:binId/hourly", async (req, res) => {
   try {
     const { binId } = req.params;
@@ -48,24 +85,57 @@ router.get("/bin/:binId/hourly", async (req, res) => {
 
     if (!bin) return res.status(400).json({ error: "No Bin Found" });
 
-    const last24Hrs = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const result = {
+      distance: getHourlyAvg(bin.distance),
+      weight: getHourlyAvg(bin.weight),
+      gas_value: getHourlyAvg(bin.adc_value),
+    };
 
-    // Filter data for the last 24 hours
-    const filteredDistance = bin.distance.filter((d) => new Date(d.timestamp) >= last24Hrs);
-    const filteredWeight = bin.weight.filter((d) => new Date(d.timestamp) >= last24Hrs);
-    const filteredADC = bin.adc_value.filter((d) => new Date(d.timestamp) >= last24Hrs);
-
-    // Process each attribute separately
-    const distanceData = groupByHour(filteredDistance);
-    const weightData = groupByHour(filteredWeight);
-    const adcData = groupByHour(filteredADC);
-
-    res.json({
-      distance: distanceData,
-      weight: weightData,
-      adc_value: adcData,
-    });
+    res.json(result);
   } catch (error) {
+    console.error("Error in hourly data:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route: Daily Aggregation
+router.get("/bin/:binId/daily", async (req, res) => {
+  try {
+    const { binId } = req.params;
+    const bin = await Bin.findOne({ binId });
+
+    if (!bin) return res.status(400).json({ error: "No Bin Found" });
+
+    const result = {
+      distance: getDailyAvg(bin.distance),
+      weight: getDailyAvg(bin.weight),
+      gas_value: getDailyAvg(bin.adc_value),
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error in daily data:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route: Monthly Aggregation
+router.get("/bin/:binId/monthly", async (req, res) => {
+  try {
+    const { binId } = req.params;
+    const bin = await Bin.findOne({ binId });
+
+    if (!bin) return res.status(400).json({ error: "No Bin Found" });
+
+    const result = {
+      distance: getMonthlyAvg(bin.distance),
+      weight: getMonthlyAvg(bin.weight),
+      gas_value: getMonthlyAvg(bin.adc_value),
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error in monthly data:", error);
     res.status(500).json({ error: error.message });
   }
 });
