@@ -44,10 +44,10 @@ router.get("/bin/:binId/hourly", async (req,res) => {
 
     const last24Hrs = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const hourlyData = bin.distance.filter((d) => d.timestamp >= last24Hrs);
-    const groupedData = Object.values(groupByHour(hourlyData).map((h) => ({
+    const groupedData = Object.values(groupByHour(hourlyData)).map((h) => ({
       hour : `${h.hour}:00`,
       average: h.total / h.count,
-    })));
+    }));
 
     res.json(groupedData)
 
