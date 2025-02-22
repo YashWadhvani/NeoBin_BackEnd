@@ -43,6 +43,8 @@ app.use("/api/v1", userRoutes);
 app.use("/api/v1", binRoutes);
 
 // ✅ MongoDB Connection
+console.log("🔍 MONGO_URI:", process.env.MONGO_URI);
+
 mongoose
     .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("✅ Connected to MongoDB"))
@@ -67,6 +69,7 @@ app.get("/collections", async (req, res) => {
 // 🔹 Database Health Check
 app.get("/health", (req, res) => {
     const status = mongoose.connection.readyState;
+    console.log(status)
     res.status(status === 1 ? 200 : 500).json({
         message: status === 1 ? "✅ Database is connected" : "❌ Database is not connected",
     });
