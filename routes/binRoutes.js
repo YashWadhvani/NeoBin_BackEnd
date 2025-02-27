@@ -4,8 +4,15 @@ const Bin = require("../models/Bin");
 
 // Importing Aggregation functions
 const { getHourlyAvg, getDailyAvg, getMonthlyAvg } = require("../utils/dataAggregation");
+const { default: mongoose } = require("mongoose");
 
 const router = express.Router();
+
+router.get("/debug", async (req,res) => {
+  res.json({
+    connectionStatus: mongoose.connection.readyState,
+  })
+})
 
 // Route to get all bins
 router.get("/bins", async (req, res) => {
